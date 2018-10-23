@@ -14,10 +14,6 @@ except Exception:
     logger.error("An error has occured. Cannot set logger!")
 
 class SubnetCheck(SensuPluginCheck):
-    def __init__(self):
-        super(SubnetCheck, self).__init__()
-        self.status = 0
-
     def setup(self):
         # Setup is called with self.parser set and is responsible for setting up
         # self.options before the run method is called
@@ -48,11 +44,11 @@ class SubnetCheck(SensuPluginCheck):
         # this method is called to perform the actual check
         self.check_subnet() # defaults to class name
 
-        if self.status == 0:
+        if self.options.warning == 0:
             self.ok(self.options.message)
-        elif self.status == 1:
+        elif self.options.warning == 1:
             self.warning(self.options.message)
-        elif self.status == 2:
+        elif self.options.warning == 2:
             self.critical(self.options.message)
         else:
             self.unknown(self.options.message)
@@ -101,11 +97,12 @@ class SubnetCheck(SensuPluginCheck):
                 data[subnet_info.vpc_id].append(
                     (subnet.id, subnet_info.available_ip_address_count, total_available_ips))
 
+        self.options.warning = 0
         if warning:
-            self.status = 1
-    
+            self.options.warning = 1
+
         if critical:
-            self.status = 2
+            self.options.warning = 2
 
         msg = []
         for vpc_id in data:
