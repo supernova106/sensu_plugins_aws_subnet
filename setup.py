@@ -10,6 +10,11 @@ setup(
     author_email='binhnguyen@ebates.com',
     packages=['sensu_plugins_aws_subnet'],
     scripts=[],
+    entry_points={
+        "console_scripts": [
+            "sensu_plugins_aws_subnet = sensu_plugins_aws_subnet.__main__:main",
+        ]
+    }
     url='https://github.com/supernova106/sensu_plugins_aws_subnet',
     license='LICENSE',
     description='A extention from Python sensu plugins framework to check aws subnet available IPs',

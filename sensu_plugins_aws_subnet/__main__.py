@@ -14,6 +14,10 @@ except Exception:
     logger.error("An error has occured. Cannot set logger!")
 
 class SubnetCheck(SensuPluginCheck):
+    def __init__(self):
+        super(SubnetCheck, self).__init__()
+        self.status = 0
+
     def setup(self):
         # Setup is called with self.parser set and is responsible for setting up
         # self.options before the run method is called
@@ -44,11 +48,11 @@ class SubnetCheck(SensuPluginCheck):
         # this method is called to perform the actual check
         self.check_subnet() # defaults to class name
 
-        if self.options.warning == 0:
+        if self.status == 0:
             self.ok(self.options.message)
-        elif self.options.warning == 1:
+        elif self.status == 1:
             self.warning(self.options.message)
-        elif self.options.warning == 2:
+        elif self.status == 2:
             self.critical(self.options.message)
         else:
             self.unknown(self.options.message)
@@ -77,21 +81,31 @@ class SubnetCheck(SensuPluginCheck):
         subnets = list(ec2.subnets.filter(Filters=filters))
         data = {}
 
-        self.options.warning = 0 # OK
+        warning = False
+        critical = False
         for subnet in subnets:
             subnet_info = ec2.Subnet(subnet.id)
             total_available_ips = ipaddress.ip_network(subnet_info.cidr_block).num_addresses - 5
             if subnet_info.available_ip_address_count / total_available_ips * 100 <= threshold_critical:
-                self.options.warning = 2 # CRITICAL
-            elif subnet_info.available_ip_address_count / total_available_ips * 100 <= threshold_warning:
-                self.options.warning = 1 # WARNING
-
-            if self.options.warning in [1, 2]:
+                critical = True
                 if subnet_info.vpc_id not in data:
                     data[subnet_info.vpc_id] = []
 
                 data[subnet_info.vpc_id].append(
                     (subnet.id, subnet_info.available_ip_address_count, total_available_ips))
+            elif subnet_info.available_ip_address_count / total_available_ips * 100 <= threshold_warning:
+                warning = True
+                if subnet_info.vpc_id not in data:
+                    data[subnet_info.vpc_id] = []
+
+                data[subnet_info.vpc_id].append(
+                    (subnet.id, subnet_info.available_ip_address_count, total_available_ips))
+
+        if warning:
+            self.status = 1
+    
+        if critical:
+            self.status = 2
 
         msg = []
         for vpc_id in data:
