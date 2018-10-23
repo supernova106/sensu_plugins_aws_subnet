@@ -7,11 +7,6 @@ import os
 import ipaddress
 from sensu_plugin import SensuPluginCheck
 
-my_session = boto3.session.Session()
-region = my_session.region_name
-ec2 = boto3.resource('ec2', region)
-client = boto3.client('ec2', region)
-
 try:
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
@@ -38,10 +33,11 @@ class SubnetCheck(SensuPluginCheck):
             help='critical threshold for percentage of subnet available IPs, default to 10'
         )
         self.parser.add_argument(
-            '-m',
-            '--message',
-            default=None,
-            help='Message to print'
+            '-r',
+            '--region',
+            default='us-west-2',
+            type=str,
+            help='specify aws region. default to us-west-2'
         )
 
     def run(self):
@@ -61,19 +57,33 @@ class SubnetCheck(SensuPluginCheck):
         """
         check subnet
         """
-        threshold = self.options.warning
+        region = self.options.region
+        ec2 = boto3.resource('ec2', region)
+        client = boto3.client('ec2', region)
+        threshold_warning = self.options.warning
+        threshold_critical = self.options.critical
 
-        if threshold >= 100 or threshold <= 0:
-            logger.warning("-w indicates percentage of available IPs. It must be < 100 and > 0. Set to default value of 20")
-            threshold = 20
+
+
+        if threshold_critical >= 100 or threshold_critical <= 0:
+            logger.warning(
+                "-c indicates critical percentage of available IPs. It must be < 100 and > 0. Set to default value of 10")
+            threshold_critical = 10
 
         filters = []
         subnets = list(ec2.subnets.filter(Filters=filters))
         data = {}
+
+        self.options.warning = 0 # OK
         for subnet in subnets:
             subnet_info = ec2.Subnet(subnet.id)
             total_available_ips = ipaddress.ip_network(subnet_info.cidr_block).num_addresses - 5
-            if subnet_info.available_ip_address_count/total_available_ips*100 <= threshold:
+            if subnet_info.available_ip_address_count / total_available_ips * 100 <= threshold_critical:
+                self.options.warning = 2 # CRITICAL
+            elif subnet_info.available_ip_address_count / total_available_ips * 100 <= threshold_warning:
+                self.options.warning = 1 # WARNING
+
+            if self.option.warning in [1, 2]:
                 if subnet_info.vpc_id not in data:
                     data[subnet_info.vpc_id] = []
 
@@ -100,7 +110,6 @@ class SubnetCheck(SensuPluginCheck):
                 msg.append("\t- {} has {} available IPs out of {}".format(row[0], row[1], row[2]))
 
         self.options.message = "\n".join(msg)
-        logger.warning(self.options.message)
 
 if __name__ == "__main__":
     f = SubnetCheck()
