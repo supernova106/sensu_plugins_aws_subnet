@@ -69,7 +69,7 @@ class SubnetCheck(SensuPluginCheck):
 
         if threshold_warning >= 100 or threshold_warning <= 0:
             logger.warning(
-                "-w indicates warning percentage of available IPs. It must be < 100 and > 0. Set to default value of 10")
+                "-w indicates warning percentage of available IPs. It must be < 100 and > 0. Set to default value of 20")
             threshold_warning = 20
 
         if threshold_critical >= 100 or threshold_critical <= 0:
