@@ -39,6 +39,13 @@ class SubnetCheck(SensuPluginCheck):
             type=str,
             help='specify aws region. default to us-west-2'
         )
+        self.parser.add_argument(
+            '-vpcid',
+            '--vpcid',
+            default=None,
+            type=str,
+            help='specify comma separated list of vpc ids. For example: vpc-abc123,vpc-xyz123'
+        )
 
     def run(self):
         # this method is called to perform the actual check
@@ -63,6 +70,11 @@ class SubnetCheck(SensuPluginCheck):
         threshold_warning = self.options.warning
         threshold_critical = self.options.critical
 
+        # check if specific vpc ids are given
+        if not self.options.vpcid:
+            selected_vpcids = [x.strip()
+                               for x in self.options.vpcid.split(',')]
+
         if threshold_warning >= 100 or threshold_warning <= 0:
             logger.warning(
                 "-w indicates warning percentage of available IPs. It must be < 100 and > 0. Set to default value of 10")
@@ -86,7 +98,10 @@ class SubnetCheck(SensuPluginCheck):
             elif subnet_info.available_ip_address_count / total_available_ips * 100 <= threshold_warning:
                 self.options.warning = 1 # WARNING
 
-            if self.option.warning in [1, 2]:
+            if self.options.warning in [1, 2]:
+                if not selected_vpcids and subnet_info.vpc_id not in selected_vpcids:
+                    continue
+
                 if subnet_info.vpc_id not in data:
                     data[subnet_info.vpc_id] = []
 
