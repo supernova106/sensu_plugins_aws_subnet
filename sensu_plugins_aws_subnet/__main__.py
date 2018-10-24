@@ -85,6 +85,12 @@ class SubnetCheck(SensuPluginCheck):
         critical = False
         for subnet in subnets:
             subnet_info = ec2.Subnet(subnet.id)
+
+            subnet_name = ""
+            for tag in subnet_info.tags:
+                        if tag['Key'] == 'Name':
+                            subnet_name = tag['Value']
+
             total_available_ips = ipaddress.ip_network(subnet_info.cidr_block).num_addresses - 5
             if subnet_info.available_ip_address_count / total_available_ips * 100 <= threshold_critical:
                 critical = True
@@ -92,14 +98,14 @@ class SubnetCheck(SensuPluginCheck):
                     data[subnet_info.vpc_id] = []
 
                 data[subnet_info.vpc_id].append(
-                    (subnet.id, subnet_info.available_ip_address_count, total_available_ips))
+                    (subnet.id, subnet_info.cidr_block, subnet_name, subnet_info.available_ip_address_count, total_available_ips))
             elif subnet_info.available_ip_address_count / total_available_ips * 100 <= threshold_warning:
                 warning = True
                 if subnet_info.vpc_id not in data:
                     data[subnet_info.vpc_id] = []
 
                 data[subnet_info.vpc_id].append(
-                    (subnet.id, subnet_info.available_ip_address_count, total_available_ips))
+                    (subnet.id, subnet_info.cidr_block, subnet_name, subnet_info.available_ip_address_count, total_available_ips))
 
         self.options.warning = 0
         if warning:
@@ -125,7 +131,7 @@ class SubnetCheck(SensuPluginCheck):
 
             msg.append("The following subnets are running out of ipv4 capacity:\n{}/{} ({})".format(region, vpc_id, vpc_name))
             for row in data[vpc_id]:
-                msg.append("\t- {} has {} available IPs out of {}".format(row[0], row[1], row[2]))
+                msg.append("\t- {}:{} ({}) has {} available IPs out of {}".format(row[0], row[1], row[2], row[3], row[4]))
 
         self.options.message = "\n".join(msg)
 

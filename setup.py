@@ -5,7 +5,7 @@ with open("README.md", 'r') as f:
 
 setup(
     name='sensu_plugins_aws_subnet',
-    version='0.1.3',
+    version='0.1.4',
     author='Binh Nguyen',
     author_email='binhnguyen@ebates.com',
     packages=['sensu_plugins_aws_subnet'],
