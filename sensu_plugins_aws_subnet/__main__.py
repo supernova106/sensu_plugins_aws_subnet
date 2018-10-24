@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import boto3
 import logging
-import os
 import ipaddress
+import boto3
 from sensu_plugin import SensuPluginCheck
 
 try:
@@ -14,9 +13,14 @@ except Exception:
     logger.error("An error has occured. Cannot set logger!")
 
 class SubnetCheck(SensuPluginCheck):
+    """
+    Extention from SensuPluginCheck
+    """
     def setup(self):
-        # Setup is called with self.parser set and is responsible for setting up
-        # self.options before the run method is called
+        """
+        Setup is called with self.parser set and is responsible for setting up
+        self.options before the run method is called
+        """
 
         self.parser.add_argument(
             '-w',
